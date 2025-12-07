@@ -111,6 +111,10 @@ For Debian-based distributions (e.g., Ubuntu):
    pip install -r requirements.txt
    ```
 
+   **Optional Dependencies:**
+   - For Gradio UI: `pip install -r requirements-ui.txt`
+   - For FastAPI support: `pip install -r requirements-api.txt`
+
 #### Using Pipenv
 
 1. **Install Pipenv** (if not already installed):

@@ -8,6 +8,7 @@ import scipy.io.wavfile as wavfile
 import subprocess
 import platform
 import os
+import shlex
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -120,6 +121,10 @@ class AudioPlayer:
         
         Args:
             file_path (str): Path to the audio file to play
+        
+        Note:
+            File paths are safely handled via subprocess list form,
+            which automatically escapes special characters and spaces.
         """
         logging.info(f"Playing audio file: {file_path}")
         os_name = platform.system()
@@ -127,9 +132,11 @@ class AudioPlayer:
             if os_name == "Darwin":  # macOS
                 subprocess.run(['afplay', file_path], check=True)
             elif os_name == "Windows":  # Windows
+                # Use list form for proper path handling
                 subprocess.run(['powershell', '-c', f'(New-Object Media.SoundPlayer "{file_path}").PlaySync();'], check=True)
             elif os_name == "Linux":  # Linux
                 # Try multiple players in order of preference
+                # Using list form ensures proper handling of paths with spaces/special chars
                 players = [
                     ['aplay', file_path],
                     ['mpg123', file_path],

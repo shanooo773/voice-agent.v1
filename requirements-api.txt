@@ -1,0 +1,4 @@
+-i https://pypi.org/simple
+# Optional: FastAPI for REST API
+fastapi==0.115.6
+uvicorn==0.34.0

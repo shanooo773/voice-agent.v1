@@ -23,7 +23,3 @@ pyyaml>=6.0.0
 requests>=2.32.0
 filelock>=3.16.0
 packaging>=24.0
-
-# Optional dependencies (install separately if needed):
-# For Gradio UI: pip install -r requirements-ui.txt
-# For FastAPI: pip install -r requirements-api.txt

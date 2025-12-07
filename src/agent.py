@@ -159,12 +159,16 @@ class VoiceAgent:
         Args:
             record_duration (int): Duration to record user input in seconds
             auto_play (bool): Whether to automatically play the response
+            
+        Note:
+            input() is wrapped in run_in_executor to prevent blocking the event loop.
+            This is the recommended approach for simple console input in async code.
         """
         logging.info("Starting async voice loop. Press Ctrl+C to exit.")
         
         try:
             while True:
-                # Record user input (use run_in_executor to avoid blocking the event loop)
+                # Record user input (run_in_executor moves blocking I/O off event loop)
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(None, input, "Press Enter to start recording...")
                 audio_file = await loop.run_in_executor(
