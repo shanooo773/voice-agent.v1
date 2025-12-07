@@ -164,9 +164,9 @@ class VoiceAgent:
         
         try:
             while True:
-                # Record user input
-                input("Press Enter to start recording...")
+                # Record user input (use run_in_executor to avoid blocking the event loop)
                 loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None, input, "Press Enter to start recording...")
                 audio_file = await loop.run_in_executor(
                     None,
                     self.audio_recorder.record_audio,

@@ -130,9 +130,14 @@ class AudioPlayer:
                 subprocess.run(['powershell', '-c', f'(New-Object Media.SoundPlayer "{file_path}").PlaySync();'], check=True)
             elif os_name == "Linux":  # Linux
                 # Try multiple players in order of preference
-                for player in ['aplay', 'mpg123', 'ffplay -nodisp -autoexit']:
+                players = [
+                    ['aplay', file_path],
+                    ['mpg123', file_path],
+                    ['ffplay', '-nodisp', '-autoexit', file_path]
+                ]
+                for player_cmd in players:
                     try:
-                        subprocess.run(player.split() + [file_path], check=True)
+                        subprocess.run(player_cmd, check=True)
                         break
                     except FileNotFoundError:
                         continue
