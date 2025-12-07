@@ -1,57 +1,67 @@
-# if you dont use pipenv uncomment the following:
-# from dotenv import load_dotenv
-# load_dotenv()
+# VoiceBot UI with Gradio
+# Updated to use open-source local models
+# Removed: Image processing, GROQ API, ElevenLabs API
+# Uses: Local Whisper STT, open-source LLM, Dia2 TTS
 
-#VoiceBot UI with Gradio
-import os
 import gradio as gr
+from brain_of_the_doctor import generate_medical_response
+from voice_of_the_patient import transcribe_patient_audio
+from voice_of_the_doctor import generate_doctor_voice
 
-from brain_of_the_doctor import encode_image, analyze_image_with_query
-from voice_of_the_patient import record_audio, transcribe_with_groq
-from voice_of_the_doctor import text_to_speech_with_gtts, text_to_speech_with_elevenlabs
-
-#load_dotenv()
-
-system_prompt="""You have to act as a professional doctor, i know you are not but this is for learning purpose. 
-            What's in this image?. Do you find anything wrong with it medically? 
-            If you make a differential, suggest some remedies for them. Donot add any numbers or special characters in 
-            your response. Your response should be in one long paragraph. Also always answer as if you are answering to a real person.
-            Donot say 'In the image I see' but say 'With what I see, I think you have ....'
-            Dont respond as an AI model in markdown, your answer should mimic that of an actual doctor not an AI bot, 
-            Keep your answer concise (max 2 sentences). No preamble, start your answer right away please"""
-
-
-def process_inputs(audio_filepath, image_filepath):
-    speech_to_text_output = transcribe_with_groq(GROQ_API_KEY=os.environ.get("GROQ_API_KEY"), 
-                                                 audio_filepath=audio_filepath,
-                                                 stt_model="whisper-large-v3")
-
-    # Handle the image input
-    if image_filepath:
-        doctor_response = analyze_image_with_query(query=system_prompt+speech_to_text_output, encoded_image=encode_image(image_filepath), model="meta-llama/llama-4-scout-17b-16e-instruct") #model="meta-llama/llama-4-maverick-17b-128e-instruct") 
-    else:
-        doctor_response = "No image provided for me to analyze"
-
-    voice_of_doctor = text_to_speech_with_elevenlabs(input_text=doctor_response, output_filepath="final.mp3") 
-
-    return speech_to_text_output, doctor_response, voice_of_doctor
+# System prompt for medical consultation
+system_prompt = """You have to act as a professional doctor, i know you are not but this is for learning purpose. 
+            Listen to the patient's concerns and provide helpful medical advice.
+            If you can make a differential diagnosis, suggest some remedies.
+            Do not add any numbers or special characters in your response.
+            Your response should be in one long paragraph.
+            Always answer as if you are answering to a real person.
+            Do not say things like 'Based on your audio' but respond naturally.
+            Do not respond as an AI model in markdown, your answer should mimic that of an actual doctor not an AI bot.
+            Keep your answer concise (max 2 sentences). No preamble, start your answer right away please."""
 
 
-# Create the interface
+def process_audio_input(audio_filepath):
+    """
+    Process audio input through the voice agent pipeline.
+    Voice-only interaction - no image processing.
+    
+    Args:
+        audio_filepath (str): Path to audio file from microphone
+        
+    Returns:
+        tuple: (transcription, doctor_response, audio_output_path)
+    """
+    # Step 1: Transcribe patient's audio using Whisper
+    speech_to_text_output = transcribe_patient_audio(audio_filepath)
+    
+    # Step 2: Generate doctor's response using open-source LLM
+    doctor_response = generate_medical_response(
+        query=speech_to_text_output,
+        system_prompt=system_prompt
+    )
+    
+    # Step 3: Convert doctor's response to speech using Dia2 TTS
+    audio_output = generate_doctor_voice(
+        input_text=doctor_response,
+        output_filepath="final.wav"  # Changed to .wav for Dia2 TTS
+    )
+    
+    return speech_to_text_output, doctor_response, audio_output
+
+
+# Create the Gradio interface
 iface = gr.Interface(
-    fn=process_inputs,
+    fn=process_audio_input,
     inputs=[
-        gr.Audio(sources=["microphone"], type="filepath"),
-        gr.Image(type="filepath")
+        gr.Audio(sources=["microphone"], type="filepath", label="Patient's Voice")
     ],
     outputs=[
-        gr.Textbox(label="Speech to Text"),
-        gr.Textbox(label="Doctor's Response"),
-        gr.Audio("Temp.mp3")
+        gr.Textbox(label="Speech to Text (Patient's Words)"),
+        gr.Textbox(label="Doctor's Response (Text)"),
+        gr.Audio(label="Doctor's Voice Response")
     ],
-    title="AI Doctor with Vision and Voice"
+    title="AI Doctor Voice Agent (Open Source)",
+    description="Voice-only medical consultation using open-source models: Whisper STT, Qwen LLM, and Dia2 TTS"
 )
 
 iface.launch(debug=True)
-
-#http://127.0.0.1:7860
