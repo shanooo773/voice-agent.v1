@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# Pipenv
+Pipfile.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model cache
+.cache/
+huggingface/
+torch/
+
+# Temporary audio files
+*.mp3
+*.wav
+!gtts_testing.mp3
+!gtts_testing_autoplay.mp3
+!elevenlabs_testing.mp3
+!elevenlabs_testing_autoplay.mp3
+!patient_voice_test.mp3
+!patient_voice_test_for_patient.mp3
+!final.mp3
+
+# Gradio cache
+gradio_cached_examples/
+flagged/
