@@ -87,15 +87,17 @@ class WhisperSTT:
         Args:
             model_name (str): HuggingFace Whisper model ID
             device (str): Device to use ('cuda', 'cpu', or None for auto)
+                         Default is CPU to avoid CUDA kernel issues on unsupported GPUs.
+                         Set WHISPER_DEVICE env var or pass device='cuda' to override.
         """
         self.model_name = model_name
         
-        # Determine device - prefer CPU for Whisper to avoid CUDA issues
+        # Determine device - check environment variable first, then parameter, then default to CPU
+        # CPU is default for Whisper to avoid CUDA kernel compatibility issues
         if device is None:
-            # Force CPU by default to avoid CUDA kernel issues on unsupported GPUs
-            self.device = "cpu"
-        else:
-            self.device = device
+            device = os.getenv("WHISPER_DEVICE", "cpu")
+        
+        self.device = device
         
         # Validate model exists
         validated_model_path = ensure_model_exists(model_name)

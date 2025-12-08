@@ -91,7 +91,17 @@ export MODEL_SERVER_PREFER_4BIT=0
 # Optional: Custom model paths
 export LOCAL_MODELS_DIR=./models
 export OFFLOAD_FOLDER=/tmp/transformers_offload
+
+# Optional: Force Whisper to use CUDA instead of CPU (default is CPU for stability)
+export WHISPER_DEVICE=cuda
+
+# Optional: Model server configuration
+export MODEL_SERVER_HOST=0.0.0.0
+export MODEL_SERVER_PORT=8000  # Changed from 8001 to 8000
+export MODEL_SERVER_URL=http://127.0.0.1:8000
 ```
+
+**Note**: The model server default port changed from 8001 to 8000 for better standardization.
 
 ### Starting the Model Server
 

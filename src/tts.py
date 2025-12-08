@@ -136,13 +136,15 @@ class Dia2TTS:
         
         # Generate audio using pipeline
         # Attempt with use_global=True first for better performance (if supported)
+        # use_global=True enables global conditioning in the TTS model which can improve
+        # voice quality and consistency across long-form text generation
         try:
             # Try calling with use_global parameter
             result = self.pipe(text, use_global=True)
-            logging.info("✓ Generated with use_global=True")
+            logging.info("✓ Generated with use_global=True (improved voice quality)")
         except TypeError:
             # Fallback if use_global not supported by this model/pipeline
-            logging.info("use_global=True not supported, using default generation")
+            logging.info("use_global=True not supported by model, using default generation")
             result = self.pipe(text)
         
         # Extract audio data and sampling rate

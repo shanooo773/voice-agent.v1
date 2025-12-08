@@ -46,9 +46,14 @@ except Exception:
     BitsAndBytesConfig = None
     BNB_AVAILABLE = False
 
-# Check bitsandbytes native library availability
-BNB_NATIVE_AVAILABLE = False
-if BNB_AVAILABLE:
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+
+def _check_bnb_native_available():
+    """Check if bitsandbytes native libraries are available (called lazily)."""
+    if not BNB_AVAILABLE:
+        return False
+    
     try:
         import bitsandbytes as bnb
         # Try to detect if native library is available by checking for CUDA libs
@@ -56,17 +61,17 @@ if BNB_AVAILABLE:
         bnb_path = Path(bnb.__file__).parent
         cuda_libs = list(bnb_path.glob("libbitsandbytes_cuda*.so"))
         if cuda_libs:
-            BNB_NATIVE_AVAILABLE = True
             logging.info(f"BitsAndBytes native libraries found: {[lib.name for lib in cuda_libs]}")
+            return True
         else:
             logging.warning(
                 "BitsAndBytes package found but native CUDA libraries missing. "
                 "Quantization may fail. Install with: pip install --force-reinstall bitsandbytes"
             )
+            return False
     except Exception as e:
         logging.warning(f"Could not verify BitsAndBytes native library: {e}")
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+        return False
 
 
 def is_offline_mode() -> bool:
@@ -209,9 +214,12 @@ class OpenSourceLLM:
                 logging.info(f"Created offload folder: {OFFLOAD_FOLDER}")
             except Exception as e:
                 logging.warning(f"Could not create offload folder {OFFLOAD_FOLDER}: {e}")
+        
+        # Check BNB native availability (done lazily on first model load)
+        bnb_native_available = _check_bnb_native_available()
 
         # Prefer quantized loads if CUDA available and bitsandbytes present
-        if self.device.startswith("cuda") and BNB_AVAILABLE and BNB_NATIVE_AVAILABLE and self.prefer_4bit:
+        if self.device.startswith("cuda") and BNB_AVAILABLE and bnb_native_available and self.prefer_4bit:
             try:
                 # Attempt 4-bit quantization config (transformers >= 4.31+)
                 bnb_config = BitsAndBytesConfig(
@@ -251,7 +259,7 @@ class OpenSourceLLM:
                     logging.info("Falling back to 8-bit quantization")
 
         # Try 8-bit load (less aggressive) if CUDA available and bitsandbytes available
-        if self.device.startswith("cuda") and BNB_AVAILABLE and BNB_NATIVE_AVAILABLE:
+        if self.device.startswith("cuda") and BNB_AVAILABLE and bnb_native_available:
             try:
                 logging.info(f"Attempting 8-bit BitsAndBytes load for {validated_model_path}")
                 self.model = AutoModelForCausalLM.from_pretrained(
