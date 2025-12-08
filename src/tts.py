@@ -1,19 +1,89 @@
 """
-Text-to-Speech module using Dia2 via Transformers pipeline.
+Text-to-Speech module using Dia2 via Transformers.
 Replaces ElevenLabs and gTTS.
-"""
 
-from transformers import pipeline
+Configuration constants:
+- LOCAL_MODELS_DIR: Local directory for model storage fallback
+- OFFLOAD_FOLDER: Temporary folder for CPU offloading
+- DEFAULT_HF_HOME: Default Hugging Face cache directory
+"""
+import os
 import logging
 import numpy as np
 import scipy.io.wavfile as wavfile
+import torch
+from pathlib import Path
+from typing import Optional
+
+# Configuration constants
+LOCAL_MODELS_DIR = os.getenv("LOCAL_MODELS_DIR", "./models")
+OFFLOAD_FOLDER = os.getenv("OFFLOAD_FOLDER", "/tmp/transformers_offload")
+DEFAULT_HF_HOME = os.getenv("HF_HOME", "/opt/hf_cache")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
+def is_offline_mode() -> bool:
+    """Check if we're in offline mode based on environment variables."""
+    try:
+        from transformers.utils import is_offline_mode as transformers_is_offline
+        if transformers_is_offline():
+            return True
+    except Exception:
+        pass
+    
+    # Check explicit offline environment variables
+    if os.getenv("HF_OFFLINE", "0") == "1":
+        return True
+    if os.getenv("HF_FORCE_OFFLINE", "0") == "1":
+        return True
+    if os.getenv("TRANSFORMERS_OFFLINE", "0") == "1":
+        return True
+    
+    return False
+
+
+def ensure_model_exists(model_id_or_path: str) -> str:
+    """
+    Validate model existence and return the path to use.
+    
+    Args:
+        model_id_or_path: HuggingFace model ID or local path
+        
+    Returns:
+        str: Validated model path/ID to use
+        
+    Raises:
+        RuntimeError: If model doesn't exist and cannot be downloaded
+    """
+    # If it's a local directory, use it directly
+    if os.path.isdir(model_id_or_path):
+        logging.info(f"Using local model directory: {model_id_or_path}")
+        return model_id_or_path
+    
+    # Check if we're offline
+    offline = is_offline_mode()
+    
+    if offline:
+        # In offline mode, check if model exists in HF cache
+        hf_home = os.getenv("HF_HOME", os.getenv("TRANSFORMERS_CACHE", DEFAULT_HF_HOME))
+        logging.error(
+            f"Offline mode: model {model_id_or_path} not found at local path. "
+            f"Please download to HF cache (HF_HOME={hf_home}) or set path to a directory with model files."
+        )
+        raise RuntimeError(
+            f"Offline mode: model {model_id_or_path} not found locally. "
+            f"Cannot download. Please pre-download models or disable offline mode."
+        )
+    
+    # Online mode - return model ID for download
+    return model_id_or_path
+
+
 class Dia2TTS:
-    def __init__(self, model_name="diacritical/dia2-base", language="en"):
+    def __init__(self, model_name="diacritical/dia2-base", language="en", device: Optional[str] = None):
         """
-        Initialize Dia2 TTS pipeline.
+        Initialize Dia2 TTS with manual model loading.
         
         Args:
             model_name (str): Hugging Face model identifier
@@ -21,15 +91,52 @@ class Dia2TTS:
                 - "diacritical/dia2-base" (English)
                 - "diacritical/dia2-multilingual" (for Urdu and other languages)
             language (str): Language code (e.g., 'en' for English, 'ur' for Urdu)
+            device (str): Device to use ('cuda', 'cpu', or None for auto)
         """
-        logging.info(f"Loading Dia2 TTS model: {model_name}")
-        self.pipe = pipeline(
-            "text-to-speech",
-            model=model_name,
-            device=0  # Use CPU by default, change to 0 for GPU
-        )
         self.language = language
-        logging.info("Dia2 TTS model loaded successfully")
+        self.model_name = model_name
+        
+        # Determine device
+        if device is None:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
+        
+        # Validate model exists
+        validated_model_path = ensure_model_exists(model_name)
+        offline = is_offline_mode()
+        
+        logging.info(f"Loading Dia2 TTS model: {validated_model_path} (device={self.device}, offline={offline})")
+        
+        # Try manual model loading first for better control
+        try:
+            from transformers import AutoModel, AutoProcessor
+            
+            self.processor = AutoProcessor.from_pretrained(
+                validated_model_path,
+                local_files_only=offline
+            )
+            self.model = AutoModel.from_pretrained(
+                validated_model_path,
+                local_files_only=offline
+            ).to(self.device)
+            
+            self.use_manual = True
+            logging.info(f"✓ Dia2 TTS model loaded manually on {self.device}")
+        except Exception as e:
+            # Fallback to pipeline
+            logging.warning(f"Manual model loading failed, using pipeline: {e}")
+            from transformers import pipeline
+            
+            device_arg = 0 if self.device == "cuda" else -1
+            self.pipe = pipeline(
+                "text-to-speech",
+                model=validated_model_path,
+                device=device_arg,
+                local_files_only=offline
+            )
+            self.use_manual = False
+            logging.info(f"✓ Dia2 TTS pipeline loaded on device {device_arg}")
     
     def synthesize_speech(self, text, output_filepath):
         """
@@ -44,12 +151,35 @@ class Dia2TTS:
         """
         logging.info(f"Synthesizing speech for text: {text[:50]}...")
         
-        # Generate audio
-        result = self.pipe(text)
-        
-        # Extract audio data and sampling rate
-        audio = result["audio"]
-        sampling_rate = result["sampling_rate"]
+        if self.use_manual:
+            # Use manual generation with use_global=True attempt
+            try:
+                # Attempt with use_global=True for better performance
+                logging.info("Attempting generation with use_global=True")
+                inputs = self.processor(text, return_tensors="pt").to(self.device)
+                
+                with torch.no_grad():
+                    # Try use_global parameter
+                    try:
+                        output = self.model.generate(**inputs, use_global=True)
+                        logging.info("✓ Generated with use_global=True")
+                    except TypeError:
+                        # Fallback if use_global not supported
+                        logging.info("use_global=True not supported, using default generation")
+                        output = self.model.generate(**inputs)
+                
+                # Process output
+                audio = output.cpu().numpy()
+                sampling_rate = getattr(self.model.config, 'sampling_rate', 22050)
+                
+            except Exception as e:
+                logging.error(f"Manual generation failed: {e}")
+                raise
+        else:
+            # Use pipeline
+            result = self.pipe(text)
+            audio = result["audio"]
+            sampling_rate = result["sampling_rate"]
         
         # Convert to numpy array if needed
         if not isinstance(audio, np.ndarray):
