@@ -1,8 +1,10 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -16,41 +18,93 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+cover/
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
+
+# Translations
+*.mo
+*.pot
+
+# C extensions
+*.dylib
 
 # Virtual environments
+.venv/
 venv/
 ENV/
 env/
-.venv
+env.bak/
+venv.bak/
+*.venv/
 
-# Pipenv
+# Pipenv / Poetry / Hatch
 Pipfile.lock
+poetry.lock
+.pdm.toml
+.pdm-python/
+.ruff_cache/
 
-# IDEs
-.vscode/
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer caches
+pip-wheel-metadata/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# pyenv
+.python-version
+
+# Pycharm / IntelliJ
 .idea/
+
+# VS Code
+.vscode/
+
+# Emacs / Vim swap
 *.swp
 *.swo
 *~
 
-# Environment variables
+# Environment variables / secrets
 .env
-.env.local
+.env.*
 
 # Logs
+logs/
 *.log
 
-# OS
+# OS generated files
 .DS_Store
 Thumbs.db
 
-# Model cache
+# Model caches
 .cache/
 huggingface/
 torch/
+hf_cache/
 
 # Temporary audio files
 *.mp3
@@ -62,6 +116,10 @@ torch/
 !patient_voice_test.mp3
 !patient_voice_test_for_patient.mp3
 !final.mp3
+
+# Temporary runtime artifacts
+tmp/
+*.tmp
 
 # Gradio cache
 gradio_cached_examples/

@@ -25,7 +25,7 @@ class OpenSourceLLM:
             "text-generation",
             model=model_name,
             max_new_tokens=200,
-            device=-1  # Use CPU by default, change to 0 for GPU
+            device=0  # Use CPU by default, change to 0 for GPU
         )
         logging.info("LLM model loaded successfully")
     

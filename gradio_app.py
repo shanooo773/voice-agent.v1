@@ -3,10 +3,13 @@
 # Removed: Image processing, GROQ API, ElevenLabs API
 # Uses: Local Whisper STT, open-source LLM, Dia2 TTS
 
+import os
+
 import gradio as gr
 from brain_of_the_doctor import generate_medical_response
 from voice_of_the_patient import transcribe_patient_audio
 from voice_of_the_doctor import generate_doctor_voice
+
 
 # System prompt for medical consultation
 system_prompt = """You have to act as a professional doctor, i know you are not but this is for learning purpose. 
@@ -31,6 +34,15 @@ def process_audio_input(audio_filepath):
     Returns:
         tuple: (transcription, doctor_response, audio_output_path)
     """
+    if isinstance(audio_filepath, dict):
+        audio_filepath = audio_filepath.get("name") or audio_filepath.get("path")
+
+    if not audio_filepath:
+        raise gr.Error("No audio captured. Please record or upload a clip before submitting.")
+
+    if not os.path.exists(audio_filepath):
+        raise gr.Error("Audio file missing on disk. Please retry recording.")
+
     # Step 1: Transcribe patient's audio using Whisper
     speech_to_text_output = transcribe_patient_audio(audio_filepath)
     

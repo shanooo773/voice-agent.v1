@@ -255,3 +255,6 @@ If you encounter out-of-memory errors, try:
 ## License
 
 This project is for educational purposes.
+
+TRANSFORMERS_CACHE=/opt/hf_cache HF_HOME=/opt/hf_cache pipenv run python gradio_app.py
+

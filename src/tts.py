@@ -26,7 +26,7 @@ class Dia2TTS:
         self.pipe = pipeline(
             "text-to-speech",
             model=model_name,
-            device=-1  # Use CPU by default, change to 0 for GPU
+            device=0  # Use CPU by default, change to 0 for GPU
         )
         self.language = language
         logging.info("Dia2 TTS model loaded successfully")

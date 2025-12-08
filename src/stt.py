@@ -20,7 +20,7 @@ class WhisperSTT:
         self.pipe = pipeline(
             "automatic-speech-recognition",
             model=model_name,
-            device=-1  # Use CPU by default, change to 0 for GPU
+            device=0  # Use CPU by default, change to 0 for GPU
         )
         logging.info("Whisper STT model loaded successfully")
     
