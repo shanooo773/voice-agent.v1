@@ -1,8 +1,10 @@
-# Brain of the doctor - LLM Module
-# Updated to use open-source LLM via Transformers
-# Removed: GROQ API, image processing, vision models
+"""LLM bridge used by the Gradio app."""
 
-from src.llm import OpenSourceLLM, generate_text_reply
+import logging
+import os
+
+from src.llm import generate_text_reply
+from src.model_client import ModelServerError, generate_remote_reply
 
 # Default system prompt for medical consultation
 DEFAULT_SYSTEM_PROMPT = """You have to act as a professional doctor, i know you are not but this is for learning purpose. 
@@ -29,4 +31,15 @@ def generate_medical_response(query, model="Qwen/Qwen2.5-7B-Instruct", system_pr
     if system_prompt is None:
         system_prompt = DEFAULT_SYSTEM_PROMPT
     
+    # Prefer the persistent model server so the heavy model stays resident.
+    if os.getenv("MODEL_SERVER_DISABLE", "0") != "1":
+        try:
+            return generate_remote_reply(
+                query=query,
+                system_prompt=system_prompt,
+                model_name=model,
+            )
+        except ModelServerError as exc:
+            logging.warning("Falling back to in-process generation: %s", exc)
+
     return generate_text_reply(query, model_name=model, system_prompt=system_prompt)

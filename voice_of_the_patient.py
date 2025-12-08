@@ -12,7 +12,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def record_patient_audio(file_path, duration=10):
     """
     Record audio from the patient's microphone.
-    
+        ``      534erfgd
+        ;p/lkjhtgretyuolo9iu7tre34567890=[-=`]
     Args:
         file_path (str): Path to save the recorded audio file
         duration (int): Duration to record in seconds

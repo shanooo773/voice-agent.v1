@@ -62,6 +62,7 @@ scipy = ">=1.10.0"
 accelerate = ">=0.20.0"
 torchvision = "==0.17.2"
 torchaudio = "==2.2.2"
+bitsandbytes = ">=0.43.0"
 
 [dev-packages]
 

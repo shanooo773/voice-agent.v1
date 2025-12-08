@@ -55,6 +55,7 @@ transformers>=4.30.0
 torch==2.2.2
 torchvision==0.17.2
 torchaudio==2.2.2
+bitsandbytes>=0.43.0
 
 sounddevice>=0.4.6
 soundfile>=0.12.1
