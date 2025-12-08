@@ -83,7 +83,7 @@ def ensure_model_exists(model_id_or_path: str) -> str:
 class Dia2TTS:
     def __init__(self, model_name="diacritical/dia2-base", language="en", device: Optional[str] = None):
         """
-        Initialize Dia2 TTS with manual model loading.
+        Initialize Dia2 TTS with pipeline (most reliable for TTS models).
         
         Args:
             model_name (str): Hugging Face model identifier
@@ -108,35 +108,18 @@ class Dia2TTS:
         
         logging.info(f"Loading Dia2 TTS model: {validated_model_path} (device={self.device}, offline={offline})")
         
-        # Try manual model loading first for better control
-        try:
-            from transformers import AutoModel, AutoProcessor
-            
-            self.processor = AutoProcessor.from_pretrained(
-                validated_model_path,
-                local_files_only=offline
-            )
-            self.model = AutoModel.from_pretrained(
-                validated_model_path,
-                local_files_only=offline
-            ).to(self.device)
-            
-            self.use_manual = True
-            logging.info(f"✓ Dia2 TTS model loaded manually on {self.device}")
-        except Exception as e:
-            # Fallback to pipeline
-            logging.warning(f"Manual model loading failed, using pipeline: {e}")
-            from transformers import pipeline
-            
-            device_arg = 0 if self.device == "cuda" else -1
-            self.pipe = pipeline(
-                "text-to-speech",
-                model=validated_model_path,
-                device=device_arg,
-                local_files_only=offline
-            )
-            self.use_manual = False
-            logging.info(f"✓ Dia2 TTS pipeline loaded on device {device_arg}")
+        # Use pipeline for TTS (most reliable approach)
+        from transformers import pipeline
+        
+        device_arg = 0 if self.device == "cuda" else -1
+        self.pipe = pipeline(
+            "text-to-speech",
+            model=validated_model_path,
+            device=device_arg,
+            local_files_only=offline
+        )
+        self.use_manual = False  # Keep for compatibility
+        logging.info(f"✓ Dia2 TTS pipeline loaded on device {device_arg}")
     
     def synthesize_speech(self, text, output_filepath):
         """
@@ -151,35 +134,20 @@ class Dia2TTS:
         """
         logging.info(f"Synthesizing speech for text: {text[:50]}...")
         
-        if self.use_manual:
-            # Use manual generation with use_global=True attempt
-            try:
-                # Attempt with use_global=True for better performance
-                logging.info("Attempting generation with use_global=True")
-                inputs = self.processor(text, return_tensors="pt").to(self.device)
-                
-                with torch.no_grad():
-                    # Try use_global parameter
-                    try:
-                        output = self.model.generate(**inputs, use_global=True)
-                        logging.info("✓ Generated with use_global=True")
-                    except TypeError:
-                        # Fallback if use_global not supported
-                        logging.info("use_global=True not supported, using default generation")
-                        output = self.model.generate(**inputs)
-                
-                # Process output
-                audio = output.cpu().numpy()
-                sampling_rate = getattr(self.model.config, 'sampling_rate', 22050)
-                
-            except Exception as e:
-                logging.error(f"Manual generation failed: {e}")
-                raise
-        else:
-            # Use pipeline
+        # Generate audio using pipeline
+        # Attempt with use_global=True first for better performance (if supported)
+        try:
+            # Try calling with use_global parameter
+            result = self.pipe(text, use_global=True)
+            logging.info("✓ Generated with use_global=True")
+        except TypeError:
+            # Fallback if use_global not supported by this model/pipeline
+            logging.info("use_global=True not supported, using default generation")
             result = self.pipe(text)
-            audio = result["audio"]
-            sampling_rate = result["sampling_rate"]
+        
+        # Extract audio data and sampling rate
+        audio = result["audio"]
+        sampling_rate = result["sampling_rate"]
         
         # Convert to numpy array if needed
         if not isinstance(audio, np.ndarray):
